@@ -71,19 +71,13 @@ typedef struct builtInCommands
 
 config *configInit(config *build);
 
-_Bool findBuiltIns(config *build);
 int exitFunc(config *build);
 int historyFunc(config *build);
 int aliasFunc(config *build);
 
 int cdFunc(config *);
-_Bool cdToHome(config *build);
-_Bool cdToPrevious(config *build);
-_Bool cdToCustom(config *build);
-_Bool updateEnviron(config *build);
 
 int updateOld(config *build);
-_Bool updateCur(config *build, int index);
 
 int envFunc(config *build);
 int setenvFunc(config *build);
@@ -123,12 +117,7 @@ void displayPrompt(void);
 void displayNewLine(void);
 void sigintHandler(int sigint);
 
-_Bool checkPath(config *);
-_Bool checkEdgeCases(config *build);
-
-_Bool splitString(config *build);
 unsigned int countWords(char *s);
-_Bool isSpace(char c);
 
 int _strlen(char *s);
 char *_strcat(char *dest, char *src);
