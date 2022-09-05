@@ -1,215 +1,93 @@
 #include "shell.h"
-/**
- * getallenv - get all environment
- * Return: environment
- *
- */
-char **getallenv()
-{
-	char **environ = *(getenviron());
-	char **envcopy;
-	size_t len = 0;
 
-	envcopy = environ;
-	while (envcopy[len] != NULL)
-		len++;
-#ifdef DEBUGMODE
-	printf("Got length of env lines %d\nNow copying\n", len);
-#endif
-	envcopy = malloc(sizeof(char **) * (len + 1));
-	if (envcopy == NULL)
-		return (NULL);
-	while (len > 0)
+/**
+ * get_environ - returns the string array copy of our environ
+ * @info: Structure containing potential arguments. Used to maintain
+ *          constant function prototype.
+ * Return: Always 0
+ */
+char **get_environ(info_t *info)
+{
+	if (!info->environ || info->env_changed)
 	{
-		envcopy[len] = environ[len];
-		len--;
+		info->environ = list_to_strings(info->env);
+		info->env_changed = 0;
 	}
-	envcopy[len] = environ[len];
-	return (envcopy);
-}
-/**
- * setallenv - set whole environment for new value
- * @envin: environment
- * @newval: new value to be added
- * Return: 0 if success, -1 if failure
- */
-/* add should be null for first init to not free passed array */
-int setallenv(char **envin, char *newval)
-{
-	char ***environ = getenviron();
-	size_t len = 0;
 
-#ifdef DEBUGMODE
-	printf("In setallenv, newval:%s\n", newval);
-#endif
-	while (envin[len] != NULL)
-		len++;
-	if (newval != NULL)
-		len++;
-	*environ = malloc(sizeof(char **) * (len + 1));
-	if (*environ == NULL)
-		return (-1);
-	for (len = 0; envin[len] != NULL; len++)
-		if (newval == NULL)
-		{
-			(*environ)[len] = _strdup(envin[len]);
-		}
-		else
-			(*environ)[len] = envin[len];
-	if (newval != NULL)
-	{
-#ifdef DEBUGMODE
-		printf("Adding newval:%s\n", newval);
-#endif
-		(*environ)[len] = newval;
-		len++;
-	}
-	(*environ)[len] = NULL;
-#ifdef DEBUGMODE
-	printf("At end. Free old environ if adding a string\n");
-#endif
-	if (newval != NULL)
-		free(envin);
-	return (0);
+	return (info->environ);
 }
-/**
- * _getenv - get local environment
- * @name: environment variable
- * Return: string of local environment
- */
-char *_getenv(char *name)
-{
-	char **environ = *(getenviron());
-	int i, j;
-	char *s;
 
-#ifdef DEBUGMODE
-	printf("In getenv, name:%s\n", name);
-#endif
-	i = 0;
-	while (environ[i] != NULL)
-	{
-		s = environ[i];
-		j = 0;
-#ifdef DEBUGSVARS
-		printf("Checking against:%s\n", environ[i]);
-#endif
-		while (s[j] == name[j])
-		{
-			j++;
-			if (name[j] == 0 && s[j] == '=')
-				return (_strdup(s + j + 1));
-		}
-		i++;
-	}
-	return (name);
-}
 /**
- * _setenv - set environment for new value
- * @name: name of variable
- * @val: value of variable
- * Return: 0 or setallenv if success, -1 if fail
+ * _unsetenv - Remove an environment variable
+ * @info: Structure containing potential arguments. Used to maintain
+ *        constant function prototype.
+ *  Return: 1 on delete, 0 otherwise
+ * @var: the string env var property
  */
-int _setenv(char *name, char *val)
+int _unsetenv(info_t *info, char *var)
 {
-	char ***environroot = getenviron();
-	char **environ = *environroot;
-	int i, j, namel, vall;
-	char *s, *ptr;
+	list_t *node = info->env;
+	size_t i = 0;
+	char *p;
 
-#ifdef DEBUGMODE
-	printf("In setenv, name:%s:val:%s\n", name, val);
-#endif
-	if (name == NULL || val == NULL)
-		return (0);
-	namel = _strlen(name);
-	vall = _strlen(val);
-	ptr = malloc(sizeof(char) * (namel + vall + 2));
-	if (ptr == NULL)
-		return (-1);
-	s = ptr;
-	_strcpy(s, name);
-	s += namel;
-	_strcpy(s++, "=");
-	_strcpy(s, val);
-	s += vall;
-	*s = 0;
-#ifdef DEBUGMODE
-	printf("Ptr mallocd:%s\n", ptr);
-#endif
-	i = 0;
-	while (environ[i] != NULL)
-	{
-		s = environ[i];
-		j = 0;
-		while (s[j] == name[j])
-		{
-			j++;
-			if (name[j] == 0 && s[j] == '=')
-			{
-				free(environ[i]);
-				environ[i] = ptr;
-				return (0);
-			}
-		}
-		i++;
-	}
-	return (setallenv(*environroot, ptr));
-}
-/**
- * _unsetenv - unset environment
- * @name: name of variable to unset
- * Return: 0 if success
- *
- * testing functionality  copy environ, if hits skip over, realloc
- */
-int _unsetenv(char *name)
-{
-	char **environ = *getenviron();
-	int i, j;
-	int check = 0;
-	char *s;
-	char **env;
-
-#ifdef DEBUGMODE
-	printf("In unsetenv, name:%s\n", name);
-#endif
-	if (name == NULL)
+	if (!node || !var)
 		return (0);
 
-	i = 0;
-	while (environ[i] != NULL)
+	while (node)
 	{
-		s = environ[i];
-		j = 0;
-		while (s[j] == name[j])
+		p = starts_with(node->str, var);
+		if (p && *p == '=')
 		{
-			j++;
-			if (s[j] == '=' && name[j] == '\0')
-			{
-				check = 1;
-				break;
-			}
+			info->env_changed = delete_node_at_index(&(info->env), i);
+			i = 0;
+			node = info->env;
+			continue;
 		}
-		if (check == 1)
-			break;
+		node = node->next;
 		i++;
 	}
-	free(environ[i]);
-	while (environ[i] != NULL)
+	return (info->env_changed);
+}
+
+/**
+ * _setenv - Initialize a new environment variable,
+ *             or modify an existing one
+ * @info: Structure containing potential arguments. Used to maintain
+ *        constant function prototype.
+ * @var: the string env var property
+ * @value: the string env var value
+ *  Return: Always 0
+ */
+int _setenv(info_t *info, char *var, char *value)
+{
+	char *buf = NULL;
+	list_t *node;
+	char *p;
+
+	if (!var || !value)
+		return (0);
+
+	buf = malloc(_strlen(var) + _strlen(value) + 2);
+	if (!buf)
+		return (1);
+	_strcpy(buf, var);
+	_strcat(buf, "=");
+	_strcat(buf, value);
+	node = info->env;
+	while (node)
 	{
-		environ[i] = environ[i + 1];
-		i++;
+		p = starts_with(node->str, var);
+		if (p && *p == '=')
+		{
+			free(node->str);
+			node->str = buf;
+			info->env_changed = 1;
+			return (0);
+		}
+		node = node->next;
 	}
-	environ[i] = NULL;
-	env = environ;
-	setallenv(env, NULL);
-	i = 0;
-	while (env[i])
-	{
-		free(env[i]);
-		i++;
-	}
-	free(env);
+	add_node_end(&(info->env), buf, 0);
+	free(buf);
+	info->env_changed = 1;
 	return (0);
 }
